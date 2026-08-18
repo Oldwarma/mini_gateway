@@ -1,0 +1,21 @@
+{
+  "entities": [
+    { "id": "samsung", "name": "三星电子", "aliases": ["三星", "Samsung", "삼성"], "status": "active" },
+    { "id": "sk_hynix", "name": "SK海力士", "aliases": ["海力士", "SK Hynix"], "status": "active" }
+  ],
+  "sources": [
+    { "id": "sec-report", "name": "三星2024年度报告", "type": "file", "url": "https://example.com/samsung-2024", "policy": "allowed" },
+    { "id": "hynix-report", "name": "SK海力士2024年度报告", "type": "file", "url": "https://example.com/hynix-2024", "policy": "allowed" }
+  ],
+  "evidence": [
+    { "id": "ev-0001", "source_id": "sec-report", "title": "三星2024年报·财务摘要", "url": "https://example.com/samsung-2024#p12", "content": "2024年三星电子合并营收300.9万亿韩元。", "fingerprint": "fp-samsung-0001" },
+    { "id": "ev-0002", "source_id": "sec-report", "title": "三星2024年报·营业利润", "url": "https://example.com/samsung-2024#p15", "content": "2024年三星电子营业利润32.7万亿韩元。", "fingerprint": "fp-samsung-0002" },
+    { "id": "ev-0003", "source_id": "hynix-report", "title": "SK海力士2024年报·营收", "url": "https://example.com/hynix-2024#p8", "content": "2024年SK海力士营收66.25万亿韩元。", "fingerprint": "fp-hynix-0001" }
+  ],
+  "claims": [
+    { "claim_id": "c-0001", "entity_id": "samsung", "statement": "三星2024年合并营收300.9万亿韩元", "source_ref": "ev-0001#p12", "page": "p12" },
+    { "claim_id": "c-0002", "entity_id": "samsung", "statement": "三星2024年营业利润32.7万亿韩元", "source_ref": "ev-0002#p15", "page": "p15" },
+    { "claim_id": "c-0003", "entity_id": "samsung", "statement": "三星2024年半导体业务收入88.8万亿韩元", "source_ref": "ev-0002#p18", "page": "p18" },
+    { "claim_id": "c-0004", "entity_id": "sk_hynix", "statement": "SK海力士2024年营收66.25万亿韩元", "source_ref": "ev-0003#p8", "page": "p8" }
+  ]
+}

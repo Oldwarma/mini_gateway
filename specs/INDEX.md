@@ -18,3 +18,17 @@
 解析规则：跳过空行、`#` 开头和 `<!--` 注释行；只取恰好含两个 `|` 且三段非空的行。
 
 <!-- 以下是映射区，新条目追加在末尾 -->
+core|src/gateway/core/**|SPEC-001
+core|src/gateway/exceptions.py|SPEC-001
+knowledge|src/gateway/knowledge/**|SPEC-002
+router|src/gateway/router/**|SPEC-003
+selection|src/gateway/selector/**|SPEC-004
+selection|src/gateway/contract/**|SPEC-004
+compose|src/gateway/compose/**|SPEC-005
+gate|src/gateway/validate/**|SPEC-006
+gate|src/gateway/response/**|SPEC-006
+api|src/gateway/api/**|SPEC-007
+api|src/gateway/main.py|SPEC-007
+api|src/gateway/__init__.py|SPEC-007
+tests|tests/**|SPEC-008
+data|data/**|SPEC-008

@@ -9,3 +9,6 @@
 __pycache__/
 *.pyc
 .venv/
+
+# 运行时数据库
+*.db

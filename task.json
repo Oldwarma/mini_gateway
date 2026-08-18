@@ -1,0 +1,162 @@
+{
+  "project": "智能体迷你网关 v1",
+  "status": "已完成",
+  "design_refs": {
+    "architecture": "docs/design/architecture.md",
+    "detailed_design": "docs/design/detailed-design.md",
+    "api": "docs/design/api.md",
+    "adrs": [
+      "docs/adr/ADR-0001-tech-stack.md",
+      "docs/adr/ADR-0002-entity-router-code-driven.md",
+      "docs/adr/ADR-0003-composition-boundary.md",
+      "docs/adr/ADR-0004-validation-gate.md",
+      "docs/adr/ADR-0005-knowledge-layer-v1.md"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "T01",
+      "phase": "A 规格",
+      "title": "创建 SPEC-001~00N 并注册 INDEX",
+      "detail": "按详细设计目录结构的代码区域建 SPEC（core / knowledge / runtime / compose / validate / api / tests），在 specs/INDEX.md 注册，确保 src/gateway/** 与 tests/** 被覆盖（让 hook 放行代码写入）",
+      "acceptance": "specs/ 下每个代码区域一份 SPEC，INDEX.md 含对应 path-glob",
+      "status": "done"
+    },
+    {
+      "id": "T02",
+      "phase": "A 骨架",
+      "title": "项目骨架 + 配置加载",
+      "detail": "src/gateway 包结构、requirements.txt、config.yaml、core/config.py（load_config：llm/gate/composition/sources）",
+      "acceptance": "python 可导入 src.gateway.config，加载示例 config.yaml",
+      "status": "done"
+    },
+    {
+      "id": "T03",
+      "phase": "B 数据层",
+      "title": "core/schemas.py 领域模型",
+      "detail": "Entity/Source/Evidence/Claim/AnswerContract/AskRequest/AskResponse/Trace（详细设计 §2）",
+      "acceptance": "Pydantic 模型可实例化、可序列化",
+      "status": "done"
+    },
+    {
+      "id": "T04",
+      "phase": "B 数据层",
+      "title": "knowledge/store.py 存储",
+      "detail": "ClaimStore 抽象 + SqliteClaimStore：DDL（entities/sources/evidence/claims + claims_fts + trigger）、query_claims 走 FTS5",
+      "acceptance": "建表成功，插入/查询声明（实体过滤 + FTS 排序）正确",
+      "status": "done"
+    },
+    {
+      "id": "T05",
+      "phase": "B 数据层",
+      "title": "core/trace.py 追踪存储",
+      "detail": "TraceStore：create/get，traces 表（详细设计 §3、§8）",
+      "acceptance": "写读 trace 一致，JSON 字段可还原",
+      "status": "done"
+    },
+    {
+      "id": "T06",
+      "phase": "B 数据层",
+      "title": "core/llm.py LLM adapter",
+      "detail": "LLMProvider protocol + AnthropicProvider / OpenAIProvider / NullProvider（无 key 抛 NoLLMConfiguredError）",
+      "acceptance": "NullProvider 触发回退路径；provider 由 config 注入",
+      "status": "done"
+    },
+    {
+      "id": "T07",
+      "phase": "B 数据层",
+      "title": "data/ 示例知识数据",
+      "detail": "示例 entities/sources/evidence/claims（含『三星2024营收300.9万亿韩元』等可测试声明）",
+      "acceptance": "导入后能支持 §7 的 T1/T2 场景",
+      "status": "done"
+    },
+    {
+      "id": "T08",
+      "phase": "B 数据层",
+      "title": "knowledge/ingest.py 导入器",
+      "detail": "读取 JSON/YAML → 写入 sources/evidence/claims；promotion 轻量校验（source_ref 存在、entity 已注册、statement 非空），拒绝项入报告",
+      "acceptance": "合法数据导入、非法数据被拒并报告原因",
+      "status": "done"
+    },
+    {
+      "id": "T09",
+      "phase": "C 运行时",
+      "title": "router/entity_router.py 实体路由",
+      "detail": "route(question, entities) -> RouterResult；三层规则：全名精确 → 别名 → 正则（ADR-0002）",
+      "acceptance": "T1 精确命中、T2 别名命中、T3 路由失败返回 None",
+      "status": "done"
+    },
+    {
+      "id": "T10",
+      "phase": "C 运行时",
+      "title": "selector/claim_selector.py 声明选择",
+      "detail": "select(entity_id, question, limit)：实体过滤 + FTS5 相关性排序，仅返回 approved",
+      "acceptance": "命中相关声明、无声明返回空列表",
+      "status": "done"
+    },
+    {
+      "id": "T11",
+      "phase": "C 运行时",
+      "title": "contract/builder.py 合约构建",
+      "detail": "build(entity_id, claims) -> AnswerContract（key_points/basis/confidence 加权）",
+      "acceptance": "合约字段与声明一致，confidence 0~1",
+      "status": "done"
+    },
+    {
+      "id": "T12",
+      "phase": "C 运行时",
+      "title": "compose/ 组合边界",
+      "detail": "template_composer（确定性模板）+ llm_composer（措辞 prompt）+ boundary（选路：默认 LLM，失败回退模板，双失败 GateRejectedError）",
+      "acceptance": "无 key 走 template；有声明才有答案；验证不过走回退",
+      "status": "done"
+    },
+    {
+      "id": "T13",
+      "phase": "C 运行时",
+      "title": "validate/gate.py 七维验证门",
+      "detail": "run(ctx) -> ValidationReport；七项检查（来源锚定/实体/追踪/清洁/接口/延迟/组合冲突）并行执行",
+      "acceptance": "7 个检查逐项通过/拒绝可判定，report 入 trace",
+      "status": "done"
+    },
+    {
+      "id": "T14",
+      "phase": "C 运行时",
+      "title": "response/builder.py 响应组装",
+      "detail": "build(...) -> AskResponse + 写 traces 表（selected_claims/path/validation/answer）",
+      "acceptance": "响应含 trace_id，traces 表可查",
+      "status": "done"
+    },
+    {
+      "id": "T15",
+      "phase": "C 运行时",
+      "title": "api/ HTTP 接口 + 入口",
+      "detail": "routes.py（POST /v1/ask、GET /v1/traces/{id}、GET /health）+ deps.py + main.py（uvicorn）",
+      "acceptance": "curl 可调通三端点，返回符合 api.md；/docs 有 Swagger",
+      "status": "done"
+    },
+    {
+      "id": "T16",
+      "phase": "D 测试",
+      "title": "tests/ 七场景验收",
+      "detail": "详细设计 §7 的 T1~T7：实体命中/别名/路由失败/无LLM回退/来源缺失/延迟/组合冲突",
+      "acceptance": "pytest 全绿，对应验收标准",
+      "status": "done"
+    },
+    {
+      "id": "T17",
+      "phase": "D 自测",
+      "title": "端到端自测",
+      "detail": "pytest 全绿；uvicorn 起服务，curl /v1/ask 验证闭环（llm 与 template 两条路径）、/v1/traces 验证审计、/health",
+      "acceptance": "自测通过，输出关键响应与 trace 证据",
+      "status": "done"
+    },
+    {
+      "id": "T18",
+      "phase": "D 收尾",
+      "title": "提交",
+      "detail": "git commit：task.json、SPECs、代码、测试（网络可用则一并 push）",
+      "acceptance": "工作区干净，提交信息带 spec 前缀",
+      "status": "done"
+    }
+  ]
+}

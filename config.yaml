@@ -1,0 +1,22 @@
+# 智能体迷你网关配置（详细设计 §9）
+llm:
+  provider: none            # openai | anthropic | none
+                            # none → 自测走确定性模板路径；配 provider + key 才走 LLM 措辞
+  model: ""
+  api_key_env: ""
+
+gate:
+  latency_budget_seconds: 5
+
+composition:
+  default: llm              # llm | template
+  fallback: template
+
+data_dir: data
+
+sources:
+  - id: sec-report
+    name: 示例财报
+    type: file
+    path: data/claims.json
+    policy: allowed

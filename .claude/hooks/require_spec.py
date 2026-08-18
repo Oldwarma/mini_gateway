@@ -20,7 +20,10 @@ import os
 import sys
 
 DOC_PREFIXES = ("specs/", "docs/", ".claude/")
-DOC_FILES = {"CLAUDE.md", "README.md", ".gitignore", ".gitattributes"}
+DOC_FILES = {
+    "CLAUDE.md", "README.md", ".gitignore", ".gitattributes", "task.json",
+    "config.yaml", "requirements.txt", "pyproject.toml", "pytest.ini",
+}
 
 
 def is_document(rel: str) -> bool:

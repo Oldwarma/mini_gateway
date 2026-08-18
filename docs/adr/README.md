@@ -26,4 +26,8 @@
 
 ## 索引
 
-- [ADR-0001 ...] 待创建（下一步架构设计时逐步产生）
+- [ADR-0001: v1 技术栈选型（FastAPI + SQLite + 存储抽象）](ADR-0001-tech-stack.md)
+- [ADR-0002: 实体路由由代码规则驱动（非 LLM）](ADR-0002-entity-router-code-driven.md)
+- [ADR-0003: 组合边界（LLM 只管措辞 + 确定性模板回退）](ADR-0003-composition-boundary.md)
+- [ADR-0004: 七维验证门（答案输出前必须全部通过）](ADR-0004-validation-gate.md)
+- [ADR-0005: 知识层 v1 采用轻量导入（非完整离线管线）](ADR-0005-knowledge-layer-v1.md)

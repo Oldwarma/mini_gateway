@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import time
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse, RedirectResponse
 
 from ..core.schemas import AskRequest, AskResponse, Trace
 from ..exceptions import GateRejectedError
@@ -44,3 +46,14 @@ def get_trace(trace_id: str, deps: GatewayDeps = Depends(get_deps)) -> Trace:
 @router.get("/health")
 def health(deps: GatewayDeps = Depends(get_deps)) -> dict:
     return {"status": "ok", "db": True, "llm_configured": deps.llm_configured}
+
+
+@router.get("/", include_in_schema=False)
+def root() -> RedirectResponse:
+    return RedirectResponse(url="/chat")
+
+
+@router.get("/chat", include_in_schema=False)
+def chat_page() -> FileResponse:
+    html_path = Path(__file__).resolve().parent.parent / "ui" / "chat.html"
+    return FileResponse(html_path, media_type="text/html")

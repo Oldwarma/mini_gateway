@@ -1,0 +1,150 @@
+<!-- spec: SPEC-009 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智能体迷你网关 · 对话</title>
+<style>
+  :root {
+    --bg: #f4f6f9; --card: #ffffff; --border: #e2e6ec;
+    --primary: #2563eb; --primary-dark: #1d4ed8;
+    --user: #2563eb; --user-text: #fff;
+    --bot: #ffffff; --text: #1f2937; --muted: #6b7280;
+    --ok: #16a34a; --err: #dc2626; --tag: #eff6ff; --tag-border: #bfdbfe;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+  header { background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: baseline; gap: 12px; }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header .sub { font-size: 12px; color: var(--muted); }
+  #chat { flex: 1; overflow-y: auto; padding: 20px; max-width: 860px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+  .row { display: flex; gap: 10px; }
+  .row.user { justify-content: flex-end; }
+  .bubble { max-width: 78%; padding: 12px 16px; border-radius: 14px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+  .user .bubble { background: var(--user); color: var(--user-text); border-bottom-right-radius: 4px; }
+  .bot .bubble { background: var(--bot); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .meta { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); font-size: 12px; color: var(--muted); }
+  .meta .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+  .tag { background: var(--tag); border: 1px solid var(--tag-border); color: var(--primary-dark); padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+  .tag.ok { background: #f0fdf4; border-color: #bbf7d0; color: var(--ok); }
+  .tag.err { background: #fef2f2; border-color: #fecaca; color: var(--err); }
+  .meta a { color: var(--primary); text-decoration: none; }
+  .meta a:hover { text-decoration: underline; }
+  .basis { margin-top: 4px; }
+  .basis li { list-style: none; padding: 3px 0; }
+  #inputbar { background: var(--card); border-top: 1px solid var(--border); padding: 14px 20px; }
+  .box { max-width: 860px; margin: 0 auto; display: flex; gap: 10px; }
+  #q { flex: 1; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; outline: none; }
+  #q:focus { border-color: var(--primary); }
+  #send { padding: 12px 22px; background: var(--primary); color: #fff; border: none; border-radius: 10px; font-size: 14px; cursor: pointer; }
+  #send:hover { background: var(--primary-dark); }
+  #send:disabled { opacity: .6; cursor: not-allowed; }
+  .hint { font-size: 12px; color: var(--muted); text-align: center; padding: 6px 0 0; }
+  .typing::after { content: "…"; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+  <header>
+    <h1>智能体迷你网关</h1>
+    <span class="sub">Agent = LLM + Harness · 可追踪问答</span>
+  </header>
+
+  <div id="chat">
+    <div class="row bot">
+      <div class="bubble">你好！我是智能体迷你网关。试试问：<br>「三星2024年营收是多少」或「SK海力士2024年营收」</div>
+    </div>
+  </div>
+
+  <div id="inputbar">
+    <div class="box">
+      <input id="q" type="text" placeholder="输入你的问题…（Enter 发送）" autocomplete="off">
+      <button id="send">发送</button>
+    </div>
+    <div class="hint">答案由确定性 Harness 控制 · 每条回答都可审计追踪</div>
+  </div>
+
+<script>
+  const chat = document.getElementById('chat');
+  const q = document.getElementById('q');
+  const send = document.getElementById('send');
+
+  function esc(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function addUser(text){
+    const row = document.createElement('div'); row.className = 'row user';
+    row.innerHTML = `<div class="bubble">${esc(text)}</div>`;
+    chat.appendChild(row); chat.scrollTop = chat.scrollHeight;
+  }
+
+  function addBotError(msg){
+    const row = document.createElement('div'); row.className = 'row bot';
+    row.innerHTML = `<div class="bubble" style="color:var(--err)">${esc(msg)}</div>`;
+    chat.appendChild(row); chat.scrollTop = chat.scrollHeight;
+  }
+
+  function addBotAnswer(data){
+    const c = data.contract || {};
+    const basis = (c.basis || []).map(b => `<li>依据声明：<code>${esc(b)}</code></li>`).join('');
+    const keypoints = (c.key_points || []).map(k => `<li>${esc(k)}</li>`).join('');
+    const row = document.createElement('div'); row.className = 'row bot';
+    row.innerHTML = `
+      <div class="bubble">
+        ${esc(data.answer)}
+        <div class="meta">
+          <div class="tags">
+            <span class="tag">实体：${esc(c.entity || '未识别')}</span>
+            <span class="tag">置信度：${typeof c.confidence === 'number' ? c.confidence : 0}</span>
+            <span class="tag">组合路径：${esc(data.composition_path || 'template')}</span>
+            ${c.entity ? '<span class="tag ok">已路由</span>' : '<span class="tag err">未识别实体</span>'}
+          </div>
+          ${keypoints ? `<div class="basis"><b>要点：</b><ul>${keypoints}</ul></div>` : ''}
+          ${basis ? `<div class="basis">${basis}</div>` : ''}
+          <div style="margin-top:6px">🔎 审计追踪：<a href="/v1/traces/${esc(data.trace_id)}" target="_blank">${esc(data.trace_id)}</a></div>
+        </div>
+      </div>`;
+    chat.appendChild(row); chat.scrollTop = chat.scrollHeight;
+  }
+
+  async function ask(){
+    const text = q.value.trim();
+    if(!text){ q.focus(); return; }
+    addUser(text); q.value = '';
+    send.disabled = true; q.disabled = true;
+
+    const row = document.createElement('div'); row.className = 'row bot';
+    row.innerHTML = '<div class="bubble typing">正在回答</div>';
+    chat.appendChild(row); chat.scrollTop = chat.scrollHeight;
+
+    try{
+      const resp = await fetch('/v1/ask', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({question: text})
+      });
+      const data = await resp.json();
+      row.remove();
+      if(resp.ok){
+        addBotAnswer(data);
+      } else if(resp.status === 422){
+        addBotError('❌ 请求无效：问题不能为空（1~500 字符）。');
+      } else {
+        const detail = data && data.detail;
+        const tid = (detail && typeof detail === 'object' && detail.trace_id) || '';
+        addBotError(`❌ 验证门拒绝（熔断）：${esc(tid ? 'trace ' + tid : '（未记录 trace）')} —— 可用该 trace 查看审计。`);
+      }
+    }catch(e){
+      row.remove();
+      addBotError('❌ 网络错误，无法连接网关服务。请确认 uvicorn 已启动。');
+    }finally{
+      send.disabled = false; q.disabled = false; q.focus();
+    }
+  }
+
+  send.addEventListener('click', ask);
+  q.addEventListener('keydown', e => { if(e.key === 'Enter') ask(); });
+  q.focus();
+</script>
+</body>
+</html>

@@ -31,6 +31,7 @@ updated: 2026-08-18
 - [ ] AC-2: /v1/traces/{id} 可查到对应审计记录；不存在返回 404
 - [ ] AC-3: /health 返回 status/db/llm_configured
 - [ ] AC-4: 实体无法识别返回 200 + 提示语（confidence=0）
+- [ ] AC-5: `GET /chat` 提供聊天界面（HTML）；`GET /` 重定向到 `/chat`
 
 ## 5. 涉及代码区域（area）与路径（path）
 

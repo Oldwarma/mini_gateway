@@ -12,5 +12,7 @@
 
 ## 当前文档
 
-- [`architecture.md`](architecture.md) —— 网关架构方案 v1：把《可追踪的Harness架构.md》中的
+- [`architecture.md`](architecture.md) —— 网关架构方案 v1（概要）：把《可追踪的Harness架构.md》中的
   运行时引擎层 / 知识层 / 基础设施层选型落地为迷你版架构（对应 ADR-0001 ~ 0005）。
+- [`detailed-design.md`](detailed-design.md) —— 详细设计 v1：模块接口、领域模型、SQLite DDL、
+  各模块实现要点、时序、异常、测试场景、追踪记录格式。

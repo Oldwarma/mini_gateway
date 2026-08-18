@@ -157,6 +157,52 @@ class SqliteClaimStore:
             source_ref=r["source_ref"], page=r["page"], status=r["status"],
         )
 
+    def get_source(self, source_id: str) -> Optional[Source]:
+        with self._lock:
+            row = self._conn.execute("SELECT * FROM sources WHERE id=?", (source_id,)).fetchone()
+        if not row:
+            return None
+        return Source(id=row["id"], name=row["name"], url=row["url"], type=row["type"], policy=row["policy"], status=row["status"])
+
+    def list_sources(self) -> list[Source]:
+        with self._lock:
+            rows = self._conn.execute("SELECT * FROM sources ORDER BY id").fetchall()
+        return [Source(id=r["id"], name=r["name"], url=r["url"], type=r["type"], policy=r["policy"], status=r["status"]) for r in rows]
+
+    def list_evidence(self) -> list[Evidence]:
+        with self._lock:
+            rows = self._conn.execute("SELECT * FROM evidence ORDER BY id").fetchall()
+        return [self._row_to_evidence(r) for r in rows]
+
+    def _row_to_evidence(self, r: sqlite3.Row) -> Evidence:
+        return Evidence(id=r["id"], source_id=r["source_id"], title=r["title"], url=r["url"], content=r["content"], fingerprint=r["fingerprint"])
+
+    def list_claims(self, entity_id: Optional[str] = None) -> list[Claim]:
+        """声明列表（声明管理 / 审计用），可按实体过滤。"""
+        if entity_id:
+            with self._lock:
+                rows = self._conn.execute(
+                    "SELECT * FROM claims WHERE entity_id = ? ORDER BY created_at", (entity_id,)
+                ).fetchall()
+        else:
+            with self._lock:
+                rows = self._conn.execute("SELECT * FROM claims ORDER BY created_at").fetchall()
+        return [self._row_to_claim(r) for r in rows]
+
+    def search_evidence(self, question: str, limit: int = 3) -> list[Evidence]:
+        """doc-qa 用：按关键词在标题+内容上的命中数打分排序（v1 无向量）。"""
+        terms = [t for t in re.split(r"\s+", question.strip()) if t]
+        with self._lock:
+            rows = self._conn.execute("SELECT * FROM evidence").fetchall()
+        scored: list[tuple[int, sqlite3.Row]] = []
+        for r in rows:
+            text = f"{r['title']} {r['content']}"
+            score = sum(1 for t in terms if t and t in text)
+            if score:
+                scored.append((score, r))
+        scored.sort(key=lambda x: -x[0])
+        return [self._row_to_evidence(r) for _, r in scored[:limit]]
+
     def query_claims(self, entity_id: str, question: str, limit: int = 3) -> list[Claim]:
         """实体过滤 + FTS5 相关性排序；无 FTS 命中时回退为按创建序取 N 条。"""
         terms = _fts_terms(question)

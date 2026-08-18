@@ -10,10 +10,34 @@ from typing import Optional
 
 import yaml
 
-from ..core.schemas import Claim, Entity, Evidence, Source
+from ..core.schemas import Claim, ClaimCreate, Entity, Evidence, Source
 from .store import ClaimStore
 
 MAX_STATEMENT_LEN = 200
+
+
+def _evidence_ref(source_ref: str) -> str:
+    """从 source_ref 取 evidence_id（# 之前的部分）。"""
+    return source_ref.split("#", 1)[0].strip()
+
+
+def validate_claim(c: ClaimCreate, store: ClaimStore) -> list[str]:
+    """promotion 校验（SPEC-011 声明管理 API 与 ingest 共用）：
+    来源存在 / 实体已注册 / 语句非空且不超长。"""
+    reasons: list[str] = []
+    ev_ref = _evidence_ref(c.source_ref) if c.source_ref else ""
+    if not c.source_ref or not ev_ref:
+        reasons.append("来源引用缺失（source_ref）")
+    elif store.get_evidence(ev_ref) is None:
+        reasons.append(f"来源 {ev_ref} 不存在")
+    if store.get_entity(c.entity_id) is None:
+        reasons.append(f"实体 {c.entity_id} 未注册")
+    statement = c.statement.strip()
+    if not statement:
+        reasons.append("声明语句为空")
+    elif len(statement) > MAX_STATEMENT_LEN:
+        reasons.append(f"声明语句超长 (> {MAX_STATEMENT_LEN})")
+    return reasons
 
 
 @dataclass
@@ -34,25 +58,15 @@ class IngestReport:
         return "导入完成： " + ", ".join(parts)
 
 
-def _evidence_ref(claim: dict) -> str:
-    """从 source_ref 取 evidence_id（# 之前的部分）。"""
-    ref = str(claim.get("source_ref", ""))
-    return ref.split("#", 1)[0].strip()
-
-
 def ingest(path: str | Path, store: ClaimStore) -> IngestReport:
     """导入 JSON/YAML 知识文件，做 promotion 轻量校验。"""
     p = Path(path)
     data = yaml.safe_load(p.read_text(encoding="utf-8")) if p.suffix.lower() in (".yaml", ".yml") else json.loads(p.read_text(encoding="utf-8"))
     report = IngestReport()
 
-    known_evidence: set[str] = set()
-    known_entities: set[str] = set()
-
     # 1) entities
     for e in data.get("entities", []) or []:
         store.upsert_entity(Entity(**e))
-        known_entities.add(e["id"])
         report.entities += 1
 
     # 2) sources
@@ -63,28 +77,23 @@ def ingest(path: str | Path, store: ClaimStore) -> IngestReport:
     # 3) evidence
     for ev in data.get("evidence", []) or []:
         store.upsert_evidence(Evidence(**ev))
-        known_evidence.add(ev["id"])
         report.evidence += 1
 
-    # 4) claims（promotion 轻量校验）
-    known_entities |= {e.id for e in store.list_entities()}
+    # 4) claims（promotion 校验，复用 validate_claim）
     for c in data.get("claims", []) or []:
-        claim_id = c.get("claim_id", "?")
-        ev_ref = _evidence_ref(c)
-        if not ev_ref or ev_ref not in known_evidence:
-            report.rejected.append(f"{claim_id}: source_ref 指向的证据不存在 ({ev_ref})")
+        try:
+            cc = ClaimCreate(**c)
+        except Exception as e:  # pydantic 校验失败：字段缺失
+            report.rejected.append(f"{c.get('claim_id', '?')}: 字段不完整 ({e})")
             continue
-        if c.get("entity_id") not in known_entities:
-            report.rejected.append(f"{claim_id}: 实体未注册 ({c.get('entity_id')})")
+        reasons = validate_claim(cc, store)
+        if reasons:
+            report.rejected.append(f"{cc.claim_id}: " + "; ".join(reasons))
             continue
-        statement = str(c.get("statement", "")).strip()
-        if not statement:
-            report.rejected.append(f"{claim_id}: statement 为空")
-            continue
-        if len(statement) > MAX_STATEMENT_LEN:
-            report.rejected.append(f"{claim_id}: statement 超长 (> {MAX_STATEMENT_LEN})")
-            continue
-        store.upsert_claim(Claim(claim_id=claim_id, entity_id=c["entity_id"], statement=statement, source_ref=c.get("source_ref", ""), page=c.get("page"), status="approved"))
+        store.upsert_claim(Claim(
+            claim_id=cc.claim_id, entity_id=cc.entity_id, statement=cc.statement.strip(),
+            source_ref=cc.source_ref, page=cc.page, status="approved",
+        ))
         report.claims += 1
 
     return report

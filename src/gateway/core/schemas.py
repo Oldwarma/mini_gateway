@@ -68,6 +68,7 @@ class AskResponse(BaseModel):
     contract: AnswerContract
     trace_id: str
     composition_path: str
+    agent: str = ""
 
 
 class RouterResult(BaseModel):
@@ -114,9 +115,70 @@ class Trace(BaseModel):
     trace_id: str
     request_id: str
     question: str
+    agent: str = ""
     entity_id: Optional[str] = None
     selected_claims: list[str] = []
     composition_path: Optional[str] = None
     validation: dict = {}
     answer: Optional[str] = None
     created_at: str = ""
+
+
+class AgentContext(BaseModel):
+    """智能体调用上下文（统一网关注入）。"""
+
+    agent: str = ""
+    question: str = ""
+    trace_id: str = ""
+    started_at: float = 0.0
+
+
+class AgentAnswer(BaseModel):
+    """智能体返回：答案 + 领域数据 + 领域验证结果 + 组合路径。"""
+
+    answer: str = ""
+    data: dict = {}
+    validation: dict = {}
+    path: str = "template"
+
+
+# ---- 声明管理（SPEC-011）创建模型 ----
+
+class EntityCreate(BaseModel):
+    id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    aliases: list[str] = []
+    status: str = "active"
+
+
+class SourceCreate(BaseModel):
+    id: str = Field(min_length=1)
+    name: str = Field(min_length=1)
+    url: Optional[str] = None
+    type: str = "file"
+    policy: str = "allowed"
+    status: str = "active"
+
+
+class EvidenceCreate(BaseModel):
+    id: str = Field(min_length=1)
+    source_id: str
+    title: str = Field(min_length=1)
+    url: Optional[str] = None
+    content: str = Field(min_length=1)
+    fingerprint: str = ""
+
+
+class ClaimCreate(BaseModel):
+    claim_id: str = Field(min_length=1)
+    entity_id: str
+    statement: str
+    source_ref: str
+    page: Optional[str] = None
+    status: str = "approved"
+
+
+class ClaimCreateResult(BaseModel):
+    accepted: bool
+    claim_id: Optional[str] = None
+    reasons: list[str] = []

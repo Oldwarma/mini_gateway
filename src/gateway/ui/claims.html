@@ -1,0 +1,137 @@
+<!-- spec: SPEC-009 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>声明管理 · 智能体迷你网关</title>
+<style>
+  :root{--bg:#f4f6f9;--card:#fff;--border:#e2e6ec;--primary:#2563eb;--muted:#6b7280;--ok:#16a34a;--err:#dc2626;--tag:#eff6ff;--tag-border:#bfdbfe;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:#1f2937;min-height:100vh}
+  nav{background:var(--card);border-bottom:1px solid var(--border);padding:0 20px;display:flex;gap:4px}
+  nav a{padding:12px 16px;text-decoration:none;color:var(--muted);font-size:14px;border-bottom:2px solid transparent}
+  nav a.active{color:var(--primary);border-color:var(--primary);font-weight:600}
+  header{background:var(--card);border-bottom:1px solid var(--border);padding:14px 20px}
+  header h1{font-size:17px;font-weight:600}
+  header .sub{font-size:12px;color:var(--muted);margin-top:2px}
+  main{max-width:1080px;margin:0 auto;padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:800px){main{grid-template-columns:1fr}}
+  section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+  section h2{font-size:15px;margin-bottom:12px}
+  .form{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+  .form input{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px}
+  .form .row{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{padding:8px 14px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer}
+  .btn:hover{filter:brightness(1.1)}
+  .result{font-size:12px;padding:6px 10px;border-radius:8px;margin-bottom:10px;display:none}
+  .result.ok{background:#f0fdf4;color:var(--ok);border:1px solid #bbf7d0;display:block}
+  .result.err{background:#fef2f2;color:var(--err);border:1px solid #fecaca;display:block}
+  ul{list-style:none;font-size:12px;color:#374151;max-height:220px;overflow:auto}
+  li{padding:5px 0;border-bottom:1px dashed var(--border);word-break:break-all}
+  code{background:var(--tag);border:1px solid var(--tag-border);border-radius:4px;padding:0 4px;font-size:11px}
+  .muted{color:var(--muted)}
+</style>
+</head>
+<body>
+  <nav>
+    <a href="/chat">可追踪问答</a>
+    <a href="/claims" class="active">声明管理</a>
+    <a href="/traces">审计中心</a>
+    <a href="/agents">智能体</a>
+  </nav>
+  <header><h1>声明管理</h1><div class="sub">录入实体 / 来源 / 证据 / 声明，提交实时跑 promotion 校验（来源存在、实体注册、语句非空）</div></header>
+
+  <main>
+    <section id="sec-entity">
+      <h2>① 实体</h2>
+      <div class="form">
+        <div class="row"><input id="ent-id" placeholder="id 如 samsung"><input id="ent-name" placeholder="名称 如 三星电子"></div>
+        <div class="row"><input id="ent-aliases" placeholder="别名（逗号分隔，如 三星,Samsung）"><button class="btn" onclick="addEntity()">添加实体</button></div>
+      </div>
+      <div id="ent-result" class="result"></div>
+      <div class="muted" style="font-size:12px;margin-bottom:6px">已注册实体：</div>
+      <ul id="ent-list"></ul>
+    </section>
+
+    <section id="sec-source">
+      <h2>② 来源</h2>
+      <div class="form">
+        <div class="row"><input id="src-id" placeholder="id 如 sec-report"><input id="src-name" placeholder="名称 如 2024年报"></div>
+        <div class="row"><input id="src-url" placeholder="URL（可空）"><button class="btn" onclick="addSource()">添加来源</button></div>
+      </div>
+      <div id="src-result" class="result"></div>
+      <div class="muted" style="font-size:12px;margin-bottom:6px">已注册来源：</div>
+      <ul id="src-list"></ul>
+    </section>
+
+    <section id="sec-evidence">
+      <h2>③ 证据</h2>
+      <div class="form">
+        <div class="row"><input id="ev-id" placeholder="id 如 ev-0009"><input id="ev-source" placeholder="来源 id"></div>
+        <div class="row"><input id="ev-title" placeholder="标题" style="flex:2"></div>
+        <div class="row"><input id="ev-content" placeholder="内容原文（来源锚定的基础）" style="flex:2"><button class="btn" onclick="addEvidence()">添加证据</button></div>
+      </div>
+      <div id="ev-result" class="result"></div>
+      <div class="muted" style="font-size:12px;margin-bottom:6px">证据库：</div>
+      <ul id="ev-list"></ul>
+    </section>
+
+    <section id="sec-claim">
+      <h2>④ 声明（背书声明）</h2>
+      <div class="form">
+        <div class="row"><input id="cl-id" placeholder="claim_id 如 c-0005"><input id="cl-entity" placeholder="实体 id 如 samsung"></div>
+        <div class="row"><input id="cl-ref" placeholder="来源引用 如 ev-0009#p3" style="flex:1"></div>
+        <div class="row"><input id="cl-stmt" placeholder="声明语句，如 三星2025年营收预计xxx" style="flex:2"><button class="btn" onclick="addClaim()">提交声明</button></div>
+      </div>
+      <div id="cl-result" class="result"></div>
+      <div class="muted" style="font-size:12px;margin-bottom:6px">已录入声明：</div>
+      <ul id="cl-list"></ul>
+    </section>
+  </main>
+
+<script>
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function show(el,ok,msg){el.className='result '+(ok?'ok':'err');el.textContent=msg}
+  async function j(method,url,body){return fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json())}
+
+  async function refresh(){
+    const [ents,srcs,evs,cls]=await Promise.all([
+      j('GET','/v1/entities').catch(()=>[]),
+      j('GET','/v1/sources').catch(()=>[]),
+      j('GET','/v1/evidence').catch(()=>[]),
+      j('GET','/v1/claims').catch(()=>[]),
+    ]);
+    document.getElementById('ent-list').innerHTML=ents.map(e=>`<li>${esc(e.id)} · ${esc(e.name)} <code>${esc((e.aliases||[]).join('/'))}</code></li>`).join('')||'<li class="muted">空</li>';
+    document.getElementById('src-list').innerHTML=srcs.map(s=>`<li>${esc(s.id)} · ${esc(s.name)} <code>${esc(s.policy)}</code></li>`).join('')||'<li class="muted">空</li>';
+    document.getElementById('ev-list').innerHTML=evs.map(e=>`<li>${esc(e.id)} · ${esc(e.title)}（来源 ${esc(e.source_id)}）</li>`).join('')||'<li class="muted">空</li>';
+    document.getElementById('cl-list').innerHTML=cls.map(c=>`<li>${esc(c.claim_id)} · ${esc(c.statement)} <code>${esc(c.source_ref)}</code> → ${esc(c.entity_id)}</li>`).join('')||'<li class="muted">空</li>';
+  }
+
+  const v=id=>document.getElementById(id).value.trim();
+  async function addEntity(){
+    const r=await j('POST','/v1/entities',{id:v('ent-id'),name:v('ent-name'),aliases:v('ent-aliases')?v('ent-aliases').split(/[,，]/).map(s=>s.trim()):[]});
+    if(r.id){show(document.getElementById('ent-result'),true,'✓ 实体已注册：'+r.id);['ent-id','ent-name','ent-aliases'].forEach(i=>document.getElementById(i).value='');refresh()}
+    else show(document.getElementById('ent-result'),false,'✗ 注册失败：'+JSON.stringify(r));
+  }
+  async function addSource(){
+    const r=await j('POST','/v1/sources',{id:v('src-id'),name:v('src-name'),url:v('src-url')||null});
+    if(r.id){show(document.getElementById('src-result'),true,'✓ 来源已注册：'+r.id);['src-id','src-name','src-url'].forEach(i=>document.getElementById(i).value='');refresh()}
+    else show(document.getElementById('src-result'),false,'✗ 注册失败：'+JSON.stringify(r));
+  }
+  async function addEvidence(){
+    const r=await j('POST','/v1/evidence',{id:v('ev-id'),source_id:v('ev-source'),title:v('ev-title'),content:v('ev-content')});
+    if(r.id){show(document.getElementById('ev-result'),true,'✓ 证据已录入：'+r.id);['ev-id','ev-source','ev-title','ev-content'].forEach(i=>document.getElementById(i).value='');refresh()}
+    else show(document.getElementById('ev-result'),false,'✗ 录入失败：'+JSON.stringify(r));
+  }
+  async function addClaim(){
+    const r=await j('POST','/v1/claims',{claim_id:v('cl-id'),entity_id:v('cl-entity'),statement:v('cl-stmt'),source_ref:v('cl-ref')});
+    const el=document.getElementById('cl-result');
+    if(r.accepted){show(el,true,'✓ 声明已背书录入：'+r.claim_id);['cl-id','cl-entity','cl-ref','cl-stmt'].forEach(i=>document.getElementById(i).value='');refresh()}
+    else show(el,false,'✗ 被 promotion 校验拒绝：'+r.reasons.join('；'));
+  }
+
+  refresh();
+</script>
+</body>
+</html>

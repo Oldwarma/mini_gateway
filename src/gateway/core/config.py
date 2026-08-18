@@ -40,12 +40,20 @@ class SourceConfig:
 
 
 @dataclass
+class ExternalAgentConfig:
+    name: str
+    url: str
+    description: str = ""
+
+
+@dataclass
 class Config:
     llm: LLMConfig
     gate: GateConfig
     composition: CompositionConfig
     sources: list[SourceConfig] = field(default_factory=list)
     data_dir: str = "data"
+    external_agents: list[ExternalAgentConfig] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "Config":
@@ -65,6 +73,7 @@ class Config:
             ),
             sources=[SourceConfig(**s) for s in d.get("sources", [])],
             data_dir=d.get("data_dir", "data"),
+            external_agents=[ExternalAgentConfig(**x) for x in d.get("external_agents", [])],
         )
 
 

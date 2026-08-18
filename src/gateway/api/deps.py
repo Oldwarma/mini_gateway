@@ -1,26 +1,22 @@
 # spec: SPEC-007
-"""依赖注入 + 主流程编排（详细设计 §5.1）。"""
+"""依赖注入 + 统一网关装配（SPEC-010）：注册所有智能体并暴露 AgentGateway。"""
 from __future__ import annotations
 
-import time
-import uuid
 from typing import Optional
 
-from ..compose.boundary import compose as compose_answer
-from ..contract.builder import build as build_contract
+from ..agents.claim_info import ClaimInfoAgent
+from ..agents.doc_qa import DocQaAgent
+from ..agents.http_agent import HttpAgent
+from ..agents.registry import AgentRegistry
 from ..core.config import Config, load_config
 from ..core.llm import make_provider
-from ..core.schemas import AnswerContract, AskResponse, ComposeResult, Trace
 from ..core.trace import TraceStore
-from ..exceptions import GateRejectedError
+from ..gateway import AgentGateway
 from ..knowledge.store import SqliteClaimStore
-from ..response.builder import build as build_response
-from ..router.entity_router import route as route_entity
-from ..selector.claim_selector import select as select_claims
 
 
 class GatewayDeps:
-    """网关运行所需依赖：配置、存储、追踪、LLM provider。"""
+    """装配配置 / 存储 / 追踪 / LLM provider，注册全部智能体到统一网关。"""
 
     def __init__(self, config: Optional[Config] = None, db_path: str = "gateway.db"):
         self.config = config or load_config("config.yaml")
@@ -30,59 +26,17 @@ class GatewayDeps:
         self.provider = make_provider(self.config.llm)
         self.llm_configured = self.config.llm.provider in ("openai", "anthropic")
 
-    def _write_trace(self, question, entity_id, selected_claims, result, trace_id) -> None:
-        self.trace_store.create(Trace(
-            trace_id=trace_id,
-            request_id=f"req-{uuid.uuid4().hex[:6]}",
-            question=question,
-            entity_id=entity_id,
-            selected_claims=selected_claims,
-            composition_path=result.path,
-            validation=result.validation,
-            answer=result.answer,
-            created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        ))
+        registry = AgentRegistry()
+        registry.register(ClaimInfoAgent(self.store, self.provider, self.config))
+        registry.register(DocQaAgent(self.store))
+        for ext in self.config.external_agents:
+            registry.register(HttpAgent(ext.name, ext.url, ext.description))
+        self.registry = registry
+        self.gateway = AgentGateway(registry, self.store, self.trace_store, self.config)
 
-    def handle_ask(self, question: str, started_at: float) -> AskResponse:
-        trace_id = f"tr-{uuid.uuid4().hex[:8]}"
-        entities = self.store.list_entities()
-        rr = route_entity(question, entities)
-
-        # 实体无法识别 → 提示语 + 仍写 trace（可审计路由失败）
-        if rr.entity_id is None:
-            contract = AnswerContract(entity="", key_points=[], basis=[], risks=[], confidence=0.0)
-            result = ComposeResult(
-                answer="无法识别问题指向的实体，请补充公司名称。",
-                path="template", llm_attempted=False, validation={},
-            )
-            return build_response(question, None, [], result, contract, self.trace_store, trace_id=trace_id)
-
-        claims = select_claims(self.store, rr.entity_id, question, 3)
-        contract = build_contract(rr.entity_id, claims)
-
-        try:
-            result = compose_answer(
-                question=question,
-                contract=contract,
-                claims=claims,
-                provider=self.provider,
-                store=self.store,
-                gate_budget=self.config.gate.latency_budget_seconds,
-                composition_default=self.config.composition.default,
-                trace_id=trace_id,
-                started_at=started_at,
-            )
-        except GateRejectedError as e:
-            e.trace_id = trace_id  # type: ignore[attr-defined]
-            # 写失败 trace 供事后审计
-            failed = ComposeResult(answer="", path="template", llm_attempted=False, validation=e.validation)
-            self._write_trace(question, rr.entity_id, [c.claim_id for c in claims], failed, trace_id)
-            raise
-
-        return build_response(
-            question, rr.entity_id,
-            [c.claim_id for c in claims], result, contract, self.trace_store, trace_id=trace_id,
-        )
+    def handle_ask(self, question: str, started_at: float):
+        """向后兼容：/v1/ask 委派到 claim-info 智能体。"""
+        return self.gateway.ask("claim-info", question)
 
     def close(self) -> None:
         self.store.close()

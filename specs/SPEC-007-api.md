@@ -32,6 +32,10 @@ updated: 2026-08-18
 - [ ] AC-3: /health 返回 status/db/llm_configured
 - [ ] AC-4: 实体无法识别返回 200 + 提示语（confidence=0）
 - [ ] AC-5: `GET /chat` 提供聊天界面（HTML）；`GET /` 重定向到 `/chat`
+- [ ] AC-6: `GET /v1/agents` 列出已注册智能体（name/version/description）
+- [ ] AC-7: `POST /v1/agents/{name}/ask` 统一提问，AskResponse 含 agent；未知智能体 404
+- [ ] AC-8: `GET /v1/traces` 返回最近 trace 列表（limit、agent 过滤）
+- [ ] AC-9: 声明管理端点：`GET/POST /v1/entities`、`/v1/sources`、`/v1/evidence`、`GET/POST /v1/claims`（行为见 SPEC-011）
 
 ## 5. 涉及代码区域（area）与路径（path）
 

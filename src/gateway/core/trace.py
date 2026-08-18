@@ -13,6 +13,7 @@ from .schemas import Trace
 _TRACES_DDL = """
 CREATE TABLE IF NOT EXISTS traces (
     trace_id         TEXT PRIMARY KEY,
+    agent            TEXT,
     request_id       TEXT NOT NULL,
     question         TEXT NOT NULL,
     entity_id        TEXT,
@@ -36,18 +37,26 @@ class TraceStore:
             self._lock = threading.RLock()
             with self._lock:
                 self._conn.executescript(_TRACES_DDL)
+                self._migrate()
                 self._conn.commit()
         except sqlite3.Error as e:
             raise StoreError(f"trace store init failed: {e}") from e
+
+    def _migrate(self) -> None:
+        """旧库升级：补齐 agent 列。"""
+        cols = {r["name"] for r in self._conn.execute("PRAGMA table_info(traces)").fetchall()}
+        if "agent" not in cols:
+            self._conn.execute("ALTER TABLE traces ADD COLUMN agent TEXT")
 
     def create(self, trace: Trace) -> None:
         try:
             with self._lock:
                 self._conn.execute(
-                    "INSERT INTO traces (trace_id, request_id, question, entity_id, selected_claims, composition_path, validation, answer, created_at) "
-                    "VALUES (?,?,?,?,?,?,?,?,?)",
+                    "INSERT INTO traces (trace_id, agent, request_id, question, entity_id, selected_claims, composition_path, validation, answer, created_at) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?)",
                     (
                         trace.trace_id,
+                        trace.agent,
                         trace.request_id,
                         trace.question,
                         trace.entity_id,
@@ -67,8 +76,12 @@ class TraceStore:
             row = self._conn.execute("SELECT * FROM traces WHERE trace_id=?", (trace_id,)).fetchone()
         if not row:
             return None
+        return self._row_to_trace(row)
+
+    def _row_to_trace(self, row: sqlite3.Row) -> Trace:
         return Trace(
             trace_id=row["trace_id"],
+            agent=row["agent"] or "",
             request_id=row["request_id"],
             question=row["question"],
             entity_id=row["entity_id"],
@@ -78,6 +91,18 @@ class TraceStore:
             answer=row["answer"],
             created_at=row["created_at"],
         )
+
+    def list(self, limit: int = 50, agent: Optional[str] = None) -> list[Trace]:
+        """最近 trace 列表（审计中心用）。"""
+        if agent:
+            rows = self._conn.execute(
+                "SELECT * FROM traces WHERE agent = ? ORDER BY created_at DESC LIMIT ?", (agent, limit)
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT * FROM traces ORDER BY created_at DESC LIMIT ?", (limit,)
+            ).fetchall()
+        return [self._row_to_trace(r) for r in rows]
 
     def close(self) -> None:
         with self._lock:

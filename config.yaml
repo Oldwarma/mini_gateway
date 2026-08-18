@@ -20,3 +20,9 @@ sources:
     type: file
     path: data/claims.json
     policy: allowed
+
+# 外部智能体接入（统一适配器）：指向本机声明智能体做接入自测
+external_agents:
+  - name: claim-info-via-http
+    url: http://127.0.0.1:8010/v1/agents/claim-info/ask
+    description: 外部接入示例：经 HTTP 转发到本机声明智能体（验证统一验证+审计）

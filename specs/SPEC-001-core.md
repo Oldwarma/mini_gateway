@@ -30,7 +30,8 @@ updated: 2026-08-18
 - [ ] AC-1: schemas 全部模型可实例化、可序列化、可反序列化
 - [ ] AC-2: load_config 能读取 config.yaml 生成 Config
 - [ ] AC-3: NullProvider 抛 NoLLMConfiguredError（触发回退路径）
-- [ ] AC-4: TraceStore create/get 往返一致
+- [ ] AC-4: TraceStore create/get 往返一致（含 agent 字段）
+- [ ] AC-5: Trace 与 AskResponse 含 agent 字段（统一网关审计）
 
 ## 5. 涉及代码区域（area）与路径（path）
 

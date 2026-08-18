@@ -30,6 +30,8 @@ gate|src/gateway/response/**|SPEC-006
 api|src/gateway/api/**|SPEC-007
 api|src/gateway/main.py|SPEC-007
 api|src/gateway/__init__.py|SPEC-007
+agents|src/gateway/agents/**|SPEC-010
+agents|src/gateway/gateway.py|SPEC-010
 ui|src/gateway/ui/**|SPEC-009
 tests|tests/**|SPEC-008
 data|data/**|SPEC-008

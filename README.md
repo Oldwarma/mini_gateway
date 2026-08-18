@@ -1,4 +1,6 @@
 # 智能体迷你网关 (Agent Mini Gateway)
+<img width="1899" height="884" alt="image" src="https://github.com/user-attachments/assets/bfab7515-152a-48dd-94ae-be9cb56999d0" />
+<img width="1486" height="403" alt="image" src="https://github.com/user-attachments/assets/bea0f0e3-50d9-4569-b57c-3d1a084d6c78" />
 
 基于**可追踪 Harness 架构**的智能体网关。
 

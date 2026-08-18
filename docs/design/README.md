@@ -16,3 +16,4 @@
   运行时引擎层 / 知识层 / 基础设施层选型落地为迷你版架构（对应 ADR-0001 ~ 0005）。
 - [`detailed-design.md`](detailed-design.md) —— 详细设计 v1：模块接口、领域模型、SQLite DDL、
   各模块实现要点、时序、异常、测试场景、追踪记录格式。
+- [`api.md`](api.md) —— API 接口文档 v1：`/v1/ask`、`/v1/traces/{id}`、`/health` 的请求/响应/错误/审计约定。

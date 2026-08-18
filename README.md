@@ -35,3 +35,17 @@ Harness 架构把决策拆开，用**确定性的代码**拥有控制层，LLM �
 ## 设计文档
 
 - [`可追踪的Harness架构.md`](可追踪的Harness架构.md) — 完整架构说明（来源锚定、实体路由、追踪、输出清洁、推荐语言合约，以及知识管线层 / 运行时引擎层 / 基础设施层的组件选型）
+
+## 文档体系导览（SDD 开发规则）
+
+本项目采用 **SDD（规格驱动开发）+ 文档规范**，规则入口见 [`CLAUDE.md`](CLAUDE.md)（Claude Code 启动自动加载）：
+
+| 目录 | 内容 |
+| ---- | ---- |
+| [`CLAUDE.md`](CLAUDE.md) | 开发规则：SDD 工作流、文档约定、编号规则、追溯规则、Definition of Done |
+| [`specs/`](specs/) | 功能规格（先于代码存在），每个功能/组件一份；`INDEX.md` 是 hook 的机器可读映射表 |
+| [`docs/adr/`](docs/adr/) | 架构决策记录（ADR-NNNN），技术选型/取舍的"为什么" |
+| [`docs/design/`](docs/design/) | 设计文档（下一步的网关架构方案放这里） |
+| [`.claude/`](.claude/) | 自动规则：`settings.json` 的 PreToolUse hook 强制"先规格后代码"；`/spec`、`/adr` 命令一键生成规范文档 |
+
+**开发铁律**：写任何代码之前，先建对应的 Spec（可用 `/spec`）。不满足会被 hook 拦截。

@@ -1,0 +1,11 @@
+# 本地/私有状态
+.claude/settings.local.json
+*.local.json
+
+# 系统文件
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
